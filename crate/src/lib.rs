@@ -166,7 +166,7 @@ fn build_graph<W: Weighted>(xs: &[W]) -> Graph {
         Node {
             predecessors,
             weight: x.weight(),
-            dist: u32::max_value(),
+            dist: u32::min_value(),
             path_predecessor: None,
         }
     });
