@@ -1,0 +1,26 @@
+{
+  "author": "Yiran Sheng",
+  "name": "remove-labels",
+  "version": "0.1.0",
+  "license": "Apache-2.0/MIT",
+  "scripts": {
+    "start": "webpack-dev-server -d",
+    "build": "webpack"
+  },
+  "bin": {
+    "create-rust-webpack": ".bin/create-rust-webpack.js"
+  },
+  "devDependencies": {
+    "@wasm-tool/wasm-pack-plugin": "0.1.3",
+    "html-webpack-plugin": "^3.2.0",
+    "webpack": "^4.25.1",
+    "webpack-cli": "^3.1.2",
+    "webpack-dev-server": "^3.1.10"
+  },
+  "dependencies": {
+    "d3": "^5.7.0",
+    "interactjs": "^1.3.4",
+    "lodash": "^4.17.11",
+    "raf-throttle": "^2.0.3"
+  }
+}
