@@ -1,5 +1,5 @@
-import * as d3 from "d3";
-import { partition } from "lodash";
+import * as d3 from "./d3_api";
+import partition from "lodash.partition";
 
 import { Interval } from "./remover";
 
@@ -75,9 +75,13 @@ export function pieChart(labelRemover) {
     return draw;
   }
   function size(w, h) {
-    width = Math.max(100, w);
-    height = Math.max(100, h);
-    return draw;
+    if (w != null && h != null) {
+      width = Math.max(100, w);
+      height = Math.max(100, h);
+      return draw;
+    } else {
+      return [width, height];
+    }
   }
 
   function draw(svgNode) {
