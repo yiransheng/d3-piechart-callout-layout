@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate cfg_if;
 extern crate int_hash;
+extern crate itertools;
 extern crate pathfinding;
 extern crate wasm_bindgen;
 extern crate web_sys;
@@ -40,6 +41,7 @@ use self::Ordering::*;
 use std::cmp::Ordering;
 
 use int_hash::IntHashSet;
+use itertools::Itertools;
 use pathfinding::directed::topological_sort::topological_sort;
 
 macro_rules! console_log {
@@ -55,7 +57,7 @@ pub fn remove_overlapping(inputs: &[f64], output: &mut [u8]) {
 
     for i in (0..n).into_iter().step_by(3) {
         let interval = Interval::from_f64_slice(&inputs[i..i + 3]);
-        xs.push(interval.unwrap());
+        xs.push(interval);
     }
 
     let g = build_graph(&xs);
@@ -78,7 +80,7 @@ trait Weighted: PartialOrd {
 pub struct Interval {
     lower: f64,
     upper: f64,
-    weight: u32,
+    weight: Option<u32>,
 }
 impl PartialEq for Interval {
     fn eq(&self, other: &Self) -> bool {
@@ -102,42 +104,43 @@ impl PartialOrd for Interval {
 }
 impl Weighted for Interval {
     fn weight(&self) -> u32 {
-        self.weight
-    }
-}
-impl<W: Weighted> Weighted for Box<W> {
-    fn weight(&self) -> u32 {
-        (**self).weight()
+        match self.weight {
+            Some(w) => w + 1,
+            _ => 0,
+        }
     }
 }
 impl Interval {
+    pub fn invalid() -> Self {
+        Interval {
+            weight: None,
+            lower: ::std::f64::NAN,
+            upper: ::std::f64::NAN,
+        }
+    }
     pub fn new(weight: u32, lower: f64, upper: f64) -> Self {
         match lower.partial_cmp(&upper) {
             Some(Greater) => Interval {
                 lower: upper,
                 upper: lower,
-                weight,
+                weight: Some(weight),
             },
             Some(Less) => Interval {
                 lower,
                 upper,
-                weight,
+                weight: Some(weight),
             },
-            _ => Interval {
-                weight: 0,
-                lower: ::std::f64::NAN,
-                upper: ::std::f64::NAN,
-            },
+            _ => Self::invalid(),
         }
     }
-    pub fn from_f64_slice(slice: &[f64]) -> Option<Self> {
+    pub fn from_f64_slice(slice: &[f64]) -> Self {
         if slice.len() != 3 {
-            None
+            Self::invalid()
         } else {
             let lower = slice[0];
             let upper = slice[1];
             let weight = slice[2];
-            Some(Self::new(weight as u32, lower, upper))
+            Self::new(weight.floor() as u32, lower, upper)
         }
     }
 }
@@ -155,14 +158,6 @@ fn build_graph<W: Weighted>(xs: &[W]) -> Graph {
         let x = &xs[i];
         let mut predecessors: IntHashSet<usize> = IntHashSet::default();
         predecessors.insert(0);
-        predecessors.extend(
-            (0..n)
-                .filter(|j| match x.partial_cmp(&xs[*j]) {
-                    Some(Greater) => true,
-                    _ => false,
-                })
-                .map(|j| j + 1),
-        );
         Node {
             predecessors,
             weight: x.weight(),
@@ -173,7 +168,7 @@ fn build_graph<W: Weighted>(xs: &[W]) -> Graph {
     let end_node = Node {
         predecessors: (1..=n).collect(),
         weight: 0,
-        dist: u32::max_value(),
+        dist: u32::min_value(),
         path_predecessor: None,
     };
 
@@ -181,6 +176,24 @@ fn build_graph<W: Weighted>(xs: &[W]) -> Graph {
     nodes.push(start_node);
     nodes.extend(g_nodes);
     nodes.push(end_node);
+
+    for (i, j) in (0..n).tuple_combinations() {
+        let x_i = &xs[i];
+        let x_j = &xs[j];
+
+        let node_id_i = i + 1;
+        let node_id_j = j + 1;
+
+        match x_i.partial_cmp(x_j) {
+            Some(Greater) => {
+                nodes[node_id_i].predecessors.insert(node_id_j);
+            }
+            Some(Less) => {
+                nodes[node_id_j].predecessors.insert(node_id_i);
+            }
+            _ => {}
+        }
+    }
 
     Graph { nodes }
 }
@@ -481,15 +494,10 @@ mod tests {
         if n < 2 {
             return false;
         }
-        for i in 0..n {
-            for j in 0..n {
-                if i == j {
-                    continue;
-                }
-                match xs[i].partial_cmp(&xs[j]) {
-                    Some(_) => {}
-                    _ => return true,
-                }
+        for (i, j) in (0..n).tuple_combinations() {
+            match xs[i].partial_cmp(&xs[j]) {
+                Some(_) => {}
+                _ => return true,
             }
         }
         false
