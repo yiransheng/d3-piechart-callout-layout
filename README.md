@@ -2,7 +2,9 @@
 
 Link: https://yiransheng.github.io/d3-piechart-callout-layout
 
+# Write Up
 
+https://write.yiransheng.com/pie-layout
 
 ## Info
 
